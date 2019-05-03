@@ -134,7 +134,7 @@ def bert_cos_score_idf(model, refs, hyps, refs_lang, hyps_lang, tokenizer, idf_d
                        verbose=False, batch_size=256, device='cuda:0'):
     
     if bert == 'facebook-XLM':
-        import XLM.generate_xlm_embeddings as xlm_emb
+        import generate_xlm_embeddings as xlm_emb
         model, params, dico, bpe = xlm_emb.load_facebook_xml_model()
 
     preds = []
