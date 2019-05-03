@@ -16,6 +16,7 @@ bert_types = [
     'bert-base-multilingual-uncased',
     'bert-base-multilingual-cased',
     'bert-base-chinese',
+    'facebook-XLM'
 ]
 
 def padding(arr, pad_token, dtype=torch.long):
@@ -129,18 +130,64 @@ def greedy_cos_idf(ref_embedding, ref_lens, ref_masks, ref_idf,
     F = 2 * P * R / (P + R)
     return P, R, F
 
-def bert_cos_score_idf(model, refs, hyps, tokenizer, idf_dict,
+def bert_cos_score_idf(model, refs, hyps, refs_lang, hyps_lang, tokenizer, idf_dict, bert,
                        verbose=False, batch_size=256, device='cuda:0'):
+    
+    if bert == 'facebook-XLM':
+        import XLM.generate_xlm_embeddings as xlm_emb
+        model, params, dico, bpe = xlm_emb.load_facebook_xml_model()
+
     preds = []
     iter_range = range(0, len(refs), batch_size)
     if verbose: iter_range = tqdm(iter_range)
     for batch_start in iter_range:
         batch_refs = refs[batch_start:batch_start+batch_size]
         batch_hyps = hyps[batch_start:batch_start+batch_size]
-        ref_stats = get_bert_embedding(batch_refs, model, tokenizer, idf_dict,
-                                       device=device)
-        hyp_stats = get_bert_embedding(batch_hyps, model, tokenizer, idf_dict,
-                                       device=device)
+
+        batch_lang_refs = refs_lang[batch_start:batch_start+batch_size]
+        batch_lang_hyps = hyps_lang[batch_start:batch_start+batch_size]
+
+        # get bert embedding
+        if bert != 'facebook-XLM':
+            ref_stats = get_bert_embedding(batch_refs, model, tokenizer, idf_dict,
+                                        device=device)
+
+            print(type(ref_stats))
+            print(len(ref_stats))
+            print(ref_stats[0].size())
+            print(ref_stats)
+
+            hyp_stats = get_bert_embedding(batch_hyps, model, tokenizer, idf_dict,
+                                        device=device)
+
+            print(type(hyp_stats))
+            print(len(hyp_stats))
+            print(hyp_stats[0].size())
+            print(hyp_stats)
+
+        else:
+
+            refs_sentences_dict = {batch_lang_refs[0] : batch_refs[0]}
+            ref_stats = xlm_emb.gen_embeddings(model, params, dico, bpe, refs_sentences_dict)
+
+            print(refs_sentences_dict)
+
+            print(len(ref_stats))
+            print(ref_stats.size())
+            print(ref_stats[0].size())
+            print(ref_stats)
+
+            #####
+
+            hyp_sentences_dict = {batch_lang_hyps[0] : batch_hyps[0]}
+            hyp_stats = xlm_emb.gen_embeddings(model, params, dico, bpe, hyp_sentences_dict)
+
+            print(hyp_sentences_dict)
+
+            print(len(hyp_stats))
+            print(hyp_stats.size())
+            print(hyp_stats[0].size())
+            print(hyp_stats)
 
         P, R, F1 = greedy_cos_idf(*ref_stats, *hyp_stats)
         preds.append(torch.stack((P, R, F1), dim=1).cpu())

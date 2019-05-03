@@ -13,7 +13,7 @@ from .utils import get_idf_dict, bert_cos_score_idf,\
 
 __all__ = ['score', 'plot_example']
 
-def score(cands, refs, bert="bert-base-multilingual-cased",
+def score(cands, refs, cands_lang, refs_lang, bert="bert-base-multilingual-cased",
           num_layers=8, verbose=False, no_idf=False, batch_size=64):
     """
     BERTScore metric.
@@ -30,14 +30,20 @@ def score(cands, refs, bert="bert-base-multilingual-cased",
     assert len(cands) == len(refs)
     assert bert in bert_types
 
-    tokenizer = BertTokenizer.from_pretrained(bert)
-    model = BertModel.from_pretrained(bert)
-    model.eval()
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
-    model.to(device)
 
-    # drop unused layers
-    model.encoder.layer = torch.nn.ModuleList([layer for layer in model.encoder.layer[:num_layers]])
+    if bert != 'facebook-XLM':
+        tokenizer = BertTokenizer.from_pretrained(bert)
+        model = BertModel.from_pretrained(bert)
+        model.eval()
+        model.to(device)
+
+        # drop unused layers
+        model.encoder.layer = torch.nn.ModuleList([layer for layer in model.encoder.layer[:num_layers]])
+    
+    else:
+        model = None
+        tokenizer = None
 
     if no_idf:
         idf_dict = defaultdict(lambda: 1.)
@@ -55,7 +61,7 @@ def score(cands, refs, bert="bert-base-multilingual-cased",
     if verbose:
         print('calculating scores...')
     start = time.perf_counter()
-    all_preds = bert_cos_score_idf(model, refs, cands, tokenizer, idf_dict,
+    all_preds = bert_cos_score_idf(model, refs, cands, refs_lang, cands_lang, tokenizer, idf_dict, bert,
                                    verbose=verbose, device=device, batch_size=batch_size)
 
     P = all_preds[:, 0].cpu()

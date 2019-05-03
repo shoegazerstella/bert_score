@@ -5,3 +5,4 @@ tqdm>=4.31.1
 # BERT
 pytorch-pretrained-bert>=0.6.1
 matplotlib
+cython
