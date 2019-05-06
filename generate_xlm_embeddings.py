@@ -90,23 +90,7 @@ def get_embeddings(model, params, dico, bpe, sentences_dict):
 
     tensor = tensor.transpose(0, 1)
 
-    
-    ref_lens = lengths
-
-    # mask
-    mask = [[1] * slen]
-    mask = torch.tensor(mask)
-
-    # TODO: do not hardcode these
-    # idf
-    idf = [1.] * (slen-2)
-    idf.append(0.)
-    idf = [0.] + idf
-    idf = torch.tensor([idf])
-    
-    embedding = (tensor, lengths, mask, idf)
-
-    return embedding
+    return tensor
     
 
 if __name__ == "__main__":

@@ -99,6 +99,7 @@ def collate_idf(arr, tokenize, numericalize, idf_dict,
     padded = padded.to(device=device)
     mask = mask.to(device=device)
     lens = lens.to(device=device)
+
     return padded, padded_idf, lens, mask
 
 
@@ -177,13 +178,26 @@ def greedy_cos_idf(ref_embedding, ref_lens, ref_masks, ref_idf,
 
     hyp_idf.div_(hyp_idf.sum(dim=1, keepdim=True))
     ref_idf.div_(ref_idf.sum(dim=1, keepdim=True))
+
     precision_scale = hyp_idf.to(word_precision.device)
     recall_scale = ref_idf.to(word_recall.device)
+    
     P = (word_precision * precision_scale).sum(dim=1)
     R = (word_recall * recall_scale).sum(dim=1)
     
     F = 2 * P * R / (P + R)
     return P, R, F
+
+def my_collate_idf(embedding):
+    
+    len = embedding.size(1)
+    mask = torch.ones((1, len))
+    
+    idf = mask.clone()
+    #idf[0][0] = 0
+    #idf[0][len-1] = 0
+    
+    return None, torch.Tensor([len]), mask, idf
 
 def bert_cos_score_idf(model, refs, hyps, refs_lang, hyps_lang, tokenizer, idf_dict, bert,
                        verbose=False, batch_size=256, device='cuda:0'):
@@ -218,17 +232,28 @@ def bert_cos_score_idf(model, refs, hyps, refs_lang, hyps_lang, tokenizer, idf_d
         # get bert embeddings
         if bert == 'facebook-XLM':
 
-            refs_sentences_dict = {batch_lang_refs[0] : batch_refs[0]}
-            ref_stats = xlm_emb.get_embeddings(model, params, dico, bpe, refs_sentences_dict)
-            #_, padded_idf, lens, mask = collate_idf(batch_refs, tokenizer.tokenize, tokenizer.convert_tokens_to_ids, numericalize, idf_dict)
-            #ref_stats = (ref_embedding, lens, mask, padded_idf)
+            with torch.no_grad():
+                refs_sentences_dict = {batch_lang_refs[0] : batch_refs[0]}
+                #ref_stats = xlm_emb.get_embeddings(model, params, dico, bpe, refs_sentences_dict)
+            
+                ref_emb = xlm_emb.get_embeddings(model, params, dico, bpe, refs_sentences_dict)
+                _, lens, mask, padded_idf = my_collate_idf(ref_emb)
 
-            hyp_sentences_dict = {batch_lang_hyps[0] : batch_hyps[0]}
-            hyp_stats = xlm_emb.get_embeddings(model, params, dico, bpe, hyp_sentences_dict)
-            #_, padded_idf, lens, mask = collate_idf(batch_hyps, tokenizer.tokenize, tokenizer.convert_tokens_to_ids, numericalize, idf_dict)
-            #hyp_stats = (hyp_embedding, lens, mask, padded_idf)
+                #_, padded_idf, lens, mask = collate_idf(batch_refs, tokenizer.tokenize, tokenizer.convert_tokens_to_ids, idf_dict, device=device)
+                ref_stats = (ref_emb, lens, mask, padded_idf)
 
+                ######
 
+                hyp_sentences_dict = {batch_lang_hyps[0] : batch_hyps[0]}
+                #hyp_stats = xlm_emb.get_embeddings(model, params, dico, bpe, hyp_sentences_dict)
+                
+                hyp_emb = xlm_emb.get_embeddings(model, params, dico, bpe, hyp_sentences_dict)
+                _, lens, mask, padded_idf = my_collate_idf(hyp_emb)
+
+                #_, padded_idf, lens, mask = collate_idf(batch_hyps, tokenizer.tokenize, tokenizer.convert_tokens_to_ids, idf_dict, device=device)
+                hyp_stats = (hyp_emb, lens, mask, padded_idf)
+
+                
         else:
 
             ref_stats = get_bert_embedding(batch_refs, model, tokenizer, idf_dict,
@@ -236,15 +261,6 @@ def bert_cos_score_idf(model, refs, hyps, refs_lang, hyps_lang, tokenizer, idf_d
 
             hyp_stats = get_bert_embedding(batch_hyps, model, tokenizer, idf_dict,
                                         device=device)
-
-        print('ref_stats')
-        print(ref_stats[3])
-
-        print('hyp_stats')
-        print(hyp_stats[3])
-
-        print('idf_dict')
-        print(idf_dict)
 
         P, R, F1 = greedy_cos_idf(*ref_stats, *hyp_stats)
         preds.append(torch.stack((P, R, F1), dim=1).cpu())

@@ -33,8 +33,8 @@ def score(cands, refs, cands_lang, refs_lang, bert="bert-base-multilingual-cased
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
     if bert == 'facebook-XLM':
-        model = None 
-        tokenizer = None
+        model = BertModel.from_pretrained('bert-base-multilingual-cased') 
+        tokenizer = BertTokenizer.from_pretrained('bert-base-multilingual-cased')
 
     else:
         tokenizer = BertTokenizer.from_pretrained(bert)
