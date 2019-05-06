@@ -2,6 +2,8 @@
 This fork aims at integrating [https://github.com/facebookresearch/XLM](https://github.com/facebookresearch/XLM) for performing cross-lingual bert_score.
 
 - Download XNLI-15 model, bpe codes and vocabulary from XLM and place them into `XLM/models/`
+- Use `bert_score_main.py` to get similarity between two sentences.
+- Use `generate_xlm_embeddings.py` to get embeddings.
 
 # BERTScore
 Automatic Evaluation Metric described in the paper [BERTScore: Evaluating Text Generation with BERT](https://arxiv.org/abs/1904.09675).

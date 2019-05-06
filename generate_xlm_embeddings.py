@@ -9,7 +9,7 @@ from XLM.src.data.dictionary import Dictionary, BOS_WORD, EOS_WORD, PAD_WORD, UN
 from XLM.src.model.transformer import TransformerModel
 
 
-def load_facebook_xml_model(model_path=None):
+def load_facebook_xml_model():
 
     print('loading facebook-XLM model..')
     # load pretrained model
@@ -42,10 +42,9 @@ def get_bpe():
     bpe = fastBPE.fastBPE(codes_path, vocab_path)
     return bpe
 
+def get_embeddings(model, params, dico, bpe, sentences_dict):
 
-def gen_embeddings(model, params, dico, bpe, sentences_dict):
-
-    print('generating embeddings from facebook-XLM model..')
+    #print('generating embeddings from facebook-XLM model..')
 
     #### Get sentence representations
 
@@ -89,7 +88,25 @@ def gen_embeddings(model, params, dico, bpe, sentences_dict):
     that corresponds to the first hidden state of the last layer of each sentence.
     '''
 
-    return tensor
+    tensor = tensor.transpose(0, 1)
+
+    
+    ref_lens = lengths
+
+    # mask
+    mask = [[1] * slen]
+    mask = torch.tensor(mask)
+
+    # TODO: do not hardcode these
+    # idf
+    idf = [1.] * (slen-2)
+    idf.append(0.)
+    idf = [0.] + idf
+    idf = torch.tensor([idf])
+    
+    embedding = (tensor, lengths, mask, idf)
+
+    return embedding
     
 
 if __name__ == "__main__":
@@ -99,6 +116,6 @@ if __name__ == "__main__":
         'es' : 'hola como estas?'
     }
 
-    model, params, dico = load_facebook_xml_model()
-    tensor = gen_embeddings(model, params, dico, bpe, sentences_dict)
+    model, params, dico, bpe = load_facebook_xml_model()
+    tensor = get_embeddings(model, params, dico, bpe, sentences_dict)
     print(tensor.size())

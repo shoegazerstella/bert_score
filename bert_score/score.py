@@ -32,7 +32,11 @@ def score(cands, refs, cands_lang, refs_lang, bert="bert-base-multilingual-cased
 
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
-    if bert != 'facebook-XLM':
+    if bert == 'facebook-XLM':
+        model = None 
+        tokenizer = None
+
+    else:
         tokenizer = BertTokenizer.from_pretrained(bert)
         model = BertModel.from_pretrained(bert)
         model.eval()
@@ -41,10 +45,6 @@ def score(cands, refs, cands_lang, refs_lang, bert="bert-base-multilingual-cased
         # drop unused layers
         model.encoder.layer = torch.nn.ModuleList([layer for layer in model.encoder.layer[:num_layers]])
     
-    else:
-        model = None
-        tokenizer = None
-
     if no_idf:
         idf_dict = defaultdict(lambda: 1.)
         # set idf for [SEP] and [CLS] to 0
