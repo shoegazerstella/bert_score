@@ -14,23 +14,23 @@ This fork aims at integrating [https://github.com/facebookresearch/XLM](https://
 ## Output
 
 ```
-	from bert_score import score
+from bert_score import score
 
-    refs = ['hello how are you?']
-    cands = ['hola como estas?'] 
-    
-    refs_lang = ['en'] 
-    cands_lang = ['es']
+refs = ['hello how are you?']
+cands = ['hola como estas?'] 
 
-    no_idf = True if len(refs) == 1 else False
+refs_lang = ['en'] 
+cands_lang = ['es']
 
-    P, R, F1 = score(cands, refs, cands_lang, refs_lang, bert="facebook-XLM", verbose=True, no_idf=no_idf)
+no_idf = True if len(refs) == 1 else False
+
+P, R, F1 = score(cands, refs, cands_lang, refs_lang, bert="facebook-XLM", verbose=True, no_idf=no_idf)
 
 
-    refs ['hello how are you?']
-	cands ['hola como estas?']
-	P: tensor([0.7468])
-	R: tensor([0.6101])
-	F1: tensor([0.6716])
+refs ['hello how are you?']
+cands ['hola como estas?']
+P: tensor([0.7468])
+R: tensor([0.6101])
+F1: tensor([0.6716])
 
 ```
