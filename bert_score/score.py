@@ -4,6 +4,7 @@ import argparse
 import torch
 from collections import defaultdict
 from pytorch_pretrained_bert import BertTokenizer, BertModel, BertForMaskedLM
+from sacremoses import MosesTokenizer, MosesPunctNormalizer
 import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
@@ -33,14 +34,15 @@ def score(cands, refs, cands_lang, refs_lang, bert="bert-base-multilingual-cased
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
     if bert == 'facebook-XLM':
-        model = BertModel.from_pretrained('bert-base-multilingual-cased') 
-        tokenizer = BertTokenizer.from_pretrained('bert-base-multilingual-cased')
-
+        model = None
+        tokenizer = None #MosesTokenizer(lang = refs_lang[0])
+        XLM = True
     else:
         tokenizer = BertTokenizer.from_pretrained(bert)
         model = BertModel.from_pretrained(bert)
         model.eval()
         model.to(device)
+        XLM = False
 
         # drop unused layers
         model.encoder.layer = torch.nn.ModuleList([layer for layer in model.encoder.layer[:num_layers]])
@@ -54,10 +56,10 @@ def score(cands, refs, cands_lang, refs_lang, bert="bert-base-multilingual-cased
         if verbose:
             print('preparing IDF dict...')
         start = time.perf_counter()
-        idf_dict = get_idf_dict(refs, tokenizer)
+        idf_dict = get_idf_dict(refs, tokenizer, XLM=XLM)
         if verbose:
             print('done in {:.2f} seconds'.format(time.perf_counter() - start))
-
+    
     if verbose:
         print('calculating scores...')
     start = time.perf_counter()
@@ -67,6 +69,7 @@ def score(cands, refs, cands_lang, refs_lang, bert="bert-base-multilingual-cased
     P = all_preds[:, 0].cpu()
     R = all_preds[:, 1].cpu()
     F1 = all_preds[:, 2].cpu()
+
     if verbose:
         print('done in {:.2f} seconds'.format(time.perf_counter() - start))
 

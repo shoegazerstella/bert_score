@@ -8,6 +8,8 @@ from XLM.src.utils import AttrDict
 from XLM.src.data.dictionary import Dictionary, BOS_WORD, EOS_WORD, PAD_WORD, UNK_WORD, MASK_WORD
 from XLM.src.model.transformer import TransformerModel
 
+vocab_path='XLM/models/vocab_xnli_15.txt'
+codes_path='XLM/models/codes_xnli_15.txt'
 
 def load_facebook_xml_model():
 
@@ -37,24 +39,29 @@ def load_facebook_xml_model():
     return model, params, dico, bpe
 
 def get_bpe():
-    codes_path = 'XLM/models/codes_xnli_15.txt'
-    vocab_path = 'XLM/models/vocab_xnli_15.txt'
     bpe = fastBPE.fastBPE(codes_path, vocab_path)
     return bpe
 
-def get_embeddings(model, params, dico, bpe, sentences_dict):
+def get_vocab():
+    # Dict that will contain keys and values
+    dictionary =  {}
+    with open(vocab_path, "r", encoding='utf-8') as f:
+        for line in f:
+            s = line.rstrip().split(' ')
+            dictionary[s[0]] = int(s[1])
+        return dictionary
 
-    #print('generating embeddings from facebook-XLM model..')
+def get_embeddings(model, params, dico, bpe, sentences_pairs):
 
     #### Get sentence representations
-
     # apply fastBPE
-    sentences = []
+    #sentences = []
 
-    for key, val in sentences_dict.items():
-        sentences.append((bpe.apply([val])[0], key))
-    
-    #print(sentences)
+    sentences = []
+    for sent in sentences_pairs:
+        bpe_sent = bpe.apply([sent[0]])[0]
+        lang_ = sent[1]
+        sentences.append((bpe_sent, lang_))
 
     '''
     sentences = [
@@ -65,11 +72,14 @@ def get_embeddings(model, params, dico, bpe, sentences_dict):
     ('اصدرت عدة افلام وث@@ اي@@ قية عن حياة السيدة في@@ روز من بينها :', 'ar'),
     ('此外 ， 松@@ 嫩 平原 上 还有 许多 小 湖泊 ， 当地 俗@@ 称 为 “ 泡@@ 子 ” 。', 'zh'),]
     ''' 
+
     # add </s> sentence delimiters
-    sentences = [(('</s> %s </s>' % sent.strip()).split(), lang) for sent, lang in sentences]
+    sentences = [(('<s> %s </s>' % sent.strip()).split(), lang) for sent, lang in sentences]
+    #sentences = [(('%s' % sent.strip()).split(), lang) for sent, lang in sentences]
 
     # create batch
     bs = len(sentences)
+    print(bs)
     slen = max([len(sent) for sent, _ in sentences])
 
     word_ids = torch.LongTensor(slen, bs).fill_(params.pad_index)
@@ -81,13 +91,11 @@ def get_embeddings(model, params, dico, bpe, sentences_dict):
     langs = torch.LongTensor([params.lang2id[lang] for _, lang in sentences]).unsqueeze(0).expand(slen, bs)
 
     tensor = model('fwd', x=word_ids, lengths=lengths, langs=langs, causal=False).contiguous()
-    
     '''
     The variable tensor is of shape (sequence_length, batch_size, model_dimension).
     tensor[0] is a tensor of shape (batch_size, model_dimension) 
     that corresponds to the first hidden state of the last layer of each sentence.
     '''
-
     tensor = tensor.transpose(0, 1)
 
     return tensor

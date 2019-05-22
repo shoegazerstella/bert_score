@@ -1,8 +1,11 @@
 # PyTorch
 torch>=0.4.1
+#torchvision
 # progress bars in model download and training scripts
 tqdm>=4.31.1
 # BERT
 pytorch-pretrained-bert>=0.6.1
+pandas
 matplotlib
 cython
+sacremoses
